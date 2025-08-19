@@ -49,7 +49,7 @@ local function teleportBehind(targetHumanoid)
 
     if targetRootPart and localRootPart then
         local distanceToTarget = (localRootPart.Position - targetRootPart.Position).Magnitude
-        if distanceToTarget > 15 then
+        if distanceToTarget > 5 then
             return
         end
 
@@ -86,7 +86,7 @@ local function monitorDamage(player)
     local character = player.Character
     if not character then return end
     local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
+    if not humanoid or player == LocalPlayer then return end
 
     local lastHealth = humanoid.Health
 
@@ -94,7 +94,7 @@ local function monitorDamage(player)
         local newHealth = humanoid.Health
         local damage = lastHealth - newHealth
 
-        if damage > 0 and damage < 0.5 and not debounce then
+        if damage > 0 and damage < 0.385 and not debounce then
             local localRootPart = LocalCharacter and LocalCharacter:FindFirstChild("HumanoidRootPart")
             local targetRootPart = humanoid.Parent and humanoid.Parent:FindFirstChild("HumanoidRootPart")
             if localRootPart and targetRootPart then
@@ -112,7 +112,6 @@ end
 
 local function onCharacterAdded(character)
     LocalCharacter = character
-    -- Notify on death
     local humanoid = character:WaitForChild("Humanoid")
     humanoid.Died:Connect(function()
         StarterGui:SetCore("SendNotification", {
@@ -122,12 +121,11 @@ local function onCharacterAdded(character)
         })
     end)
 
-    -- Setup damage monitoring for other players
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             monitorDamage(player)
         end
-        player.CharacterAdded:Connect(function(char)
+        player.CharacterAdded:Connect(function()
             wait(1)
             monitorDamage(player)
         end)
@@ -136,5 +134,4 @@ end
 
 LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 
--- Initial setup if character already loaded
 onCharacterAdded(LocalCharacter)
