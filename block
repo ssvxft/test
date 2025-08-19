@@ -1,0 +1,140 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local LocalCharacter = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+StarterGui:SetCore("SendNotification", {
+    Title = "hub soon..";
+    Text = "made by svxft";
+    Duration = 2;
+})
+
+local debounce = false
+local debounceTime = 1.5
+
+local function getBehindPosition(targetHumanoidRootPart, distance)
+    local lookVector = targetHumanoidRootPart.CFrame.LookVector
+    return targetHumanoidRootPart.Position - (lookVector * distance) + Vector3.new(0, 2, 0)
+end
+
+local function rotateCharacterTowards(targetPosition)
+    local rootPart = LocalCharacter and LocalCharacter:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        local lookAt = Vector3.new(targetPosition.X, rootPart.Position.Y, targetPosition.Z)
+        rootPart.CFrame = CFrame.new(rootPart.Position, lookAt)
+    end
+end
+
+local function rotateCameraTowards(targetPosition)
+    local cam = Camera
+    cam.CameraType = Enum.CameraType.Scriptable
+    local targetCFrame = CFrame.new(cam.CFrame.Position, targetPosition)
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(cam, tweenInfo, {CFrame = targetCFrame})
+    tween:Play()
+    tween.Completed:Connect(function()
+        cam.CameraType = Enum.CameraType.Custom
+        cam.CameraSubject = LocalCharacter and LocalCharacter:FindFirstChildOfClass("Humanoid")
+    end)
+end
+
+local function teleportBehind(targetHumanoid)
+    local targetCharacter = targetHumanoid.Parent
+    local targetRootPart = targetCharacter and targetCharacter:WaitForChild("HumanoidRootPart", 2)
+    local localRootPart = LocalCharacter and LocalCharacter:WaitForChild("HumanoidRootPart", 2)
+
+    if targetRootPart and localRootPart then
+        local distanceToTarget = (localRootPart.Position - targetRootPart.Position).Magnitude
+        if distanceToTarget > 15 then
+            return
+        end
+
+        local behindPos = getBehindPosition(targetRootPart, 3)
+        local success, err = pcall(function()
+            localRootPart.CFrame = CFrame.new(behindPos)
+        end)
+        if not success then
+            LocalCharacter:MoveTo(behindPos)
+        end
+
+        rotateCharacterTowards(targetRootPart.Position)
+        rotateCameraTowards(targetRootPart.Position)
+
+        local startTime = tick()
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            if tick() - startTime > 0.3 then
+                if connection then connection:Disconnect() end
+                return
+            end
+            rotateCharacterTowards(targetRootPart.Position)
+        end)
+
+        StarterGui:SetCore("SendNotification", {
+            Title = "aint no guarding me";
+            Text = "loool";
+            Duration = 0.5;
+        })
+    end
+end
+
+local function monitorDamage(player)
+    local character = player.Character
+    if not character then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    local lastHealth = humanoid.Health
+
+    humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+        local newHealth = humanoid.Health
+        local damage = lastHealth - newHealth
+
+        if damage > 0 and damage < 0.5 and not debounce then
+            local localRootPart = LocalCharacter and LocalCharacter:FindFirstChild("HumanoidRootPart")
+            local targetRootPart = humanoid.Parent and humanoid.Parent:FindFirstChild("HumanoidRootPart")
+            if localRootPart and targetRootPart then
+                debounce = true
+                teleportBehind(humanoid)
+
+                delay(debounceTime, function()
+                    debounce = false
+                end)
+            end
+        end
+        lastHealth = newHealth
+    end)
+end
+
+local function onCharacterAdded(character)
+    LocalCharacter = character
+    -- Notify on death
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.Died:Connect(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "dying with exps ur buns";
+            Text = "NOOOOOB";
+            Duration = 2;
+        })
+    end)
+
+    -- Setup damage monitoring for other players
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            monitorDamage(player)
+        end
+        player.CharacterAdded:Connect(function(char)
+            wait(1)
+            monitorDamage(player)
+        end)
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- Initial setup if character already loaded
+onCharacterAdded(LocalCharacter)
