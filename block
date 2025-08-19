@@ -49,7 +49,7 @@ local function teleportBehind(targetHumanoid)
 
     if targetRootPart and localRootPart then
         local distanceToTarget = (localRootPart.Position - targetRootPart.Position).Magnitude
-        if distanceToTarget > 5 then
+        if distanceToTarget > 7 then
             return
         end
 
